@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+[ -z "${ASDF_INSTALL_TYPE+x}" ] && echo "ASDF_INSTALL_TYPE is required" && exit 1
+[ -z "${ASDF_INSTALL_VERSION+x}" ] && echo "ASDF_INSTALL_VERSION is required" && exit 1
+[ -z "${ASDF_INSTALL_PATH+x}" ] && echo "ASDF_INSTALL_PATH is required" && exit 1
+
+install() {
+	local install_type=$1
+	[ "$install_type" != "version" ] && echo "intall type, $install_type, is not supported" && exit 1
+
+	local version=$2
+	local install_path=$3
+
+	local bin_install_path="$install_path/bin"
+
+	local program_name="steampipe"
+
+	local platform
+	platform=$(uname | tr '[:upper:]' '[:lower:]')
+
+	local arch
+	case "$(uname -m)" in
+	i386 | i686 | x86) arch="386" ;;
+	x86_64) arch="amd64" ;;
+	aarch64) arch="arm64" ;;
+	*) arch="$(uname -m)" ;;
+	esac
+
+	local extension
+	case "${platform}" in
+	darwin) extension="zip" ;;
+	linux) extension="tar.gz" ;;
+	esac
+
+	local extract
+	case "${platform}" in
+	darwin) extract="unzip ${program_name}.${extension}" ;;
+	linux) extract="tar xzf ${program_name}.${extension}" ;;
+	esac
+
+	local download_url
+	download_url="https://github.com/turbot/${program_name}/releases/download/v${version}/${program_name}_${platform}_${arch}.${extension}"
+
+	mkdir -p "${bin_install_path}"
+
+	echo "Downloading ${program_name} from ${download_url}"
+	cd "${bin_install_path}"
+	curl -sL "$download_url" -o ${program_name}.${extension}
+	eval "${extract}"
+	rm -f "${program_name}.${extension}"
+	chmod +x ${program_name}
+}
+
+install "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH"
